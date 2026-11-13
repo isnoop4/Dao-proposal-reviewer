@@ -2,85 +2,212 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07060f">
 <title>DAO Proposal Reviewer · GenLayer</title>
 <style>
   :root {
-    --bg: #0d1117; --card: #161b22; --border: #2a313c; --text: #e6edf3; --muted: #8b949e;
-    --accent: #7c5cff; --pass: #2ea043; --revise: #d29922; --reject: #f85149; --pending: #6e7681;
+    --bg: #07060f; --glass: rgba(255,255,255,.045); --glass-2: rgba(255,255,255,.08);
+    --border: rgba(255,255,255,.1); --text: #eef0ff; --muted: #9aa0c3;
+    --violet: #8b5cff; --cyan: #22d3ee; --pink: #ff5cb8;
+    --pass: #34d399; --revise: #fbbf24; --reject: #fb7185; --pending: #94a3b8;
   }
-  @media (prefers-color-scheme: light) {
-    :root { --bg: #f6f8fa; --card: #ffffff; --border: #d0d7de; --text: #1f2328; --muted: #656d76; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: none; text-size-adjust: none; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); overflow-x: hidden;
+    font: 15px/1.6 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 24px; margin: 0 0 4px; }
-  h2 { font-size: 17px; margin: 0 0 12px; }
-  .sub { color: var(--muted); margin: 0 0 20px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
-  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
-  input, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
-    background: var(--bg); color: var(--text); font: inherit; }
-  textarea { min-height: 110px; resize: vertical; }
-  button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px;
-    font: inherit; font-weight: 600; cursor: pointer; }
-  button:disabled { opacity: .55; cursor: wait; }
-  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 7px 12px; }
-  .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-  .rules { white-space: pre-wrap; color: var(--muted); font-size: 14px; }
-  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; }
-  .PENDING { background: var(--pending); } .PASS { background: var(--pass); }
-  .REVISE { background: var(--revise); } .REJECT { background: var(--reject); }
-  .prop h3 { margin: 0; font-size: 16px; }
-  .prop .desc { margin: 8px 0; white-space: pre-wrap; }
+
+  /* ---------- animated background ---------- */
+  .bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .5; will-change: transform; }
+  .b1 { width: 420px; height: 420px; background: var(--violet); top: -120px; left: -100px; animation: float1 18s ease-in-out infinite; }
+  .b2 { width: 380px; height: 380px; background: var(--cyan); top: 30%; right: -140px; opacity: .32; animation: float2 22s ease-in-out infinite; }
+  .b3 { width: 340px; height: 340px; background: var(--pink); bottom: -140px; left: 20%; opacity: .28; animation: float3 26s ease-in-out infinite; }
+  .grid { position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 44px 44px; -webkit-mask-image: radial-gradient(ellipse at 50% 20%, #000 20%, transparent 75%); mask-image: radial-gradient(ellipse at 50% 20%, #000 20%, transparent 75%); }
+  @keyframes float1 { 50% { transform: translate(120px, 90px) scale(1.15); } }
+  @keyframes float2 { 50% { transform: translate(-110px, 70px) scale(.9); } }
+  @keyframes float3 { 50% { transform: translate(90px, -80px) scale(1.2); } }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 18px 16px 72px; }
+
+  /* ---------- top bar ---------- */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 26px; animation: rise .7s both; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
+  .logo { width: 34px; height: 34px; filter: drop-shadow(0 0 12px rgba(139,92,255,.7)); animation: spin 14s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .net { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; margin-left: 4px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pass); box-shadow: 0 0 0 0 rgba(52,211,153,.7); animation: ping 2s infinite; }
+  @keyframes ping { 70% { box-shadow: 0 0 0 8px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
+
+  .wallet { display: flex; align-items: center; gap: 8px; }
+  .pill { font-size: 12px; font-family: ui-monospace, Menlo, monospace; background: var(--glass); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 12px; backdrop-filter: blur(10px); display: inline-flex; align-items: center; gap: 7px; }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--pending); }
+  .pill.live i { background: var(--pass); }
+
+  /* ---------- hero ---------- */
+  .hero { text-align: center; margin: 8px 0 26px; animation: rise .8s .08s both; }
+  h1 { font-size: clamp(30px, 8vw, 46px); line-height: 1.1; margin: 0 0 12px; font-weight: 800; letter-spacing: -.5px;
+    background: linear-gradient(100deg, #fff 0%, #b9a4ff 30%, var(--cyan) 55%, var(--pink) 80%, #fff 100%);
+    background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 7s linear infinite; }
+  @keyframes shine { to { background-position: -250% 0; } }
+  .sub { color: var(--muted); max-width: 560px; margin: 0 auto; font-size: 15px; }
+
+  /* ---------- glass cards with spotlight ---------- */
+  .card { position: relative; background: var(--glass); border: 1px solid var(--border); border-radius: 18px; padding: 18px;
+    margin-bottom: 16px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); overflow: hidden;
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .3s; animation: rise .7s both; }
+  .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s;
+    background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(139,92,255,.22), transparent 70%); }
+  .card:hover { border-color: rgba(139,92,255,.5); }
+  .card:hover::before { opacity: 1; }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+  h2 { font-size: 16px; margin: 0 0 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  h2 .ic { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 12px;
+    background: linear-gradient(135deg, var(--violet), var(--cyan)); }
   .meta { color: var(--muted); font-size: 12px; }
-  .review { margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); }
-  .review ul { margin: 6px 0 0 18px; padding: 0; }
-  .score { font-weight: 700; }
-  #status { font-size: 13px; color: var(--muted); min-height: 20px; margin: 8px 0 0; }
-  #status.err { color: var(--reject); }
-  .empty { color: var(--muted); text-align: center; padding: 20px 0; }
-  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 28px; }
+  .mono { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+  a { color: #b9a4ff; text-decoration: none; } a:hover { text-decoration: underline; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .rules { white-space: pre-wrap; color: var(--muted); font-size: 14px; }
+
+  /* ---------- stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; animation: rise .7s .15s both; }
+  .stat { background: var(--glass); border: 1px solid var(--border); border-radius: 14px; padding: 12px 8px; text-align: center; backdrop-filter: blur(10px); }
+  .stat b { display: block; font-size: 24px; line-height: 1.1; }
+  .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .stat.pass b { color: var(--pass); } .stat.reject b { color: var(--reject); } .stat.revise b { color: var(--revise); }
+
+  /* ---------- form ---------- */
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 5px; }
+  input, textarea { width: 100%; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--border); background: rgba(0,0,0,.28);
+    color: var(--text); font: inherit; font-size: 14.5px; outline: none; transition: border-color .25s, box-shadow .25s; }
+  input:focus, textarea:focus { border-color: var(--violet); box-shadow: 0 0 0 4px rgba(139,92,255,.18); }
+  textarea { min-height: 120px; resize: vertical; }
+  ::placeholder { color: #6b7096; }
+
+  button { position: relative; overflow: hidden; border: 0; border-radius: 12px; padding: 12px 20px; font: inherit; font-weight: 700; font-size: 14px;
+    color: #fff; cursor: pointer; background: linear-gradient(120deg, var(--violet), #5b8cff 50%, var(--cyan)); background-size: 200% 100%;
+    box-shadow: 0 8px 28px -8px rgba(139,92,255,.8); transition: transform .2s, box-shadow .25s, background-position .5s; }
+  button:hover { transform: translateY(-2px); background-position: 100% 0; box-shadow: 0 12px 34px -8px rgba(34,211,238,.7); }
+  button:active { transform: translateY(0) scale(.98); }
+  button:disabled { opacity: .55; cursor: wait; transform: none; }
+  button.ghost { background: var(--glass); border: 1px solid var(--border); box-shadow: none; padding: 8px 14px; font-size: 13px; }
+  button.ghost:hover { border-color: var(--violet); box-shadow: none; }
+  .ripple { position: absolute; border-radius: 50%; background: rgba(255,255,255,.45); transform: scale(0); animation: ripple .6s linear; pointer-events: none; }
+  @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+  /* ---------- proposals ---------- */
+  .prop h3 { margin: 0; font-size: 16.5px; }
+  .prop .num { color: var(--muted); font-weight: 500; margin-right: 4px; }
+  .prop .desc { margin: 10px 0; white-space: pre-wrap; color: #d6d9f5; font-size: 14.5px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .6px; color: #07060f; }
+  .badge.PENDING { background: var(--pending); } .badge.PASS { background: var(--pass); }
+  .badge.REVISE { background: var(--revise); } .badge.REJECT { background: var(--reject); }
+  .badge.PASS, .badge.REJECT { animation: glow 2.4s ease-in-out infinite; }
+  .badge.PASS { --g: rgba(52,211,153,.6); } .badge.REJECT { --g: rgba(251,113,133,.6); }
+  @keyframes glow { 50% { box-shadow: 0 0 16px 2px var(--g); } }
+
+  .review { margin-top: 14px; padding: 14px; border-radius: 14px; background: rgba(0,0,0,.28); border: 1px solid var(--border);
+    display: grid; grid-template-columns: 74px 1fr; gap: 14px; align-items: center; }
+  .ring { position: relative; width: 74px; height: 74px; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 6; stroke-linecap: round; }
+  .ring .bgc { stroke: rgba(255,255,255,.1); }
+  .ring .fg { stroke-dasharray: 188.5; stroke-dashoffset: 188.5; transition: stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1); }
+  .ring b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 19px; }
+  .review .sum { font-size: 14px; }
+  .review ul { margin: 8px 0 0; padding: 0; list-style: none; }
+  .review li { position: relative; padding-left: 18px; margin: 4px 0; font-size: 13.5px; color: var(--muted); opacity: 0; animation: rise .5s forwards; }
+  .review li::before { content: "›"; position: absolute; left: 4px; color: var(--cyan); font-weight: 800; }
+
+  /* validator consensus animation */
+  .consensus { margin-top: 12px; padding: 14px; border-radius: 14px; border: 1px dashed rgba(139,92,255,.5); background: rgba(139,92,255,.07); text-align: center; }
+  .nodes { display: flex; justify-content: center; gap: 10px; margin-bottom: 8px; }
+  .node { width: 14px; height: 14px; border-radius: 50%; background: var(--violet); animation: node 1.4s ease-in-out infinite; }
+  .node:nth-child(2) { animation-delay: .15s; background: #5b8cff; } .node:nth-child(3) { animation-delay: .3s; background: var(--cyan); }
+  .node:nth-child(4) { animation-delay: .45s; background: #5b8cff; } .node:nth-child(5) { animation-delay: .6s; }
+  @keyframes node { 0%, 100% { transform: scale(.6); opacity: .4; } 50% { transform: scale(1.35); opacity: 1; box-shadow: 0 0 16px currentColor; } }
+
+  /* skeleton */
+  .skel { height: 120px; border-radius: 18px; border: 1px solid var(--border);
+    background: linear-gradient(100deg, var(--glass) 30%, var(--glass-2) 50%, var(--glass) 70%); background-size: 250% 100%; animation: sk 1.4s infinite; margin-bottom: 16px; }
+  @keyframes sk { to { background-position: -250% 0; } }
+  .empty { text-align: center; color: var(--muted); padding: 26px 0; }
+
+  /* toast + confetti */
+  #toasts { position: fixed; left: 0; right: 0; bottom: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 20; }
+  .toast { background: rgba(20,18,40,.92); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; font-size: 13.5px; max-width: 90vw;
+    backdrop-filter: blur(12px); animation: toast .4s both; } .toast.err { border-color: var(--reject); } .toast.ok { border-color: var(--pass); }
+  @keyframes toast { from { opacity: 0; transform: translateY(14px) scale(.96); } }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
+
+  @media (max-width: 520px) { .stats { grid-template-columns: repeat(2, 1fr); } .review { grid-template-columns: 1fr; justify-items: start; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>DAO Proposal Reviewer</h1>
-  <p class="sub">An Intelligent Contract on GenLayer where AI validators check governance proposals against DAO rules before voting.</p>
+<div class="bg"><div class="grid"></div><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<canvas id="confetti"></canvas>
+<div id="toasts"></div>
 
-  <div class="card">
-    <div class="row">
-      <div><strong id="daoName">…</strong><div class="meta">Contract <a id="contractLink" class="mono" target="_blank" rel="noopener"></a></div></div>
-      <div class="meta">Wallet <span id="wallet" class="mono">…</span></div>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 40 40" fill="none"><defs><linearGradient id="lg" x1="0" y1="0" x2="40" y2="40"><stop stop-color="#8b5cff"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+        <path d="M20 3l14 8v18l-14 8-14-8V11z" stroke="url(#lg)" stroke-width="2.5" stroke-linejoin="round"/><circle cx="20" cy="20" r="5" fill="url(#lg)"/></svg>
+      <span>GenLayer</span><span class="net"><span class="dot"></span>Studionet</span>
     </div>
-    <h2 style="margin-top:14px">DAO rules</h2>
-    <div id="rules" class="rules">Loading…</div>
+    <div class="wallet">
+      <span class="pill" id="walletPill"><i></i><span id="walletAddr">…</span></span>
+      <button class="ghost" id="walletBtn">Connect wallet</button>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Submit a proposal</h2>
+  <div class="hero">
+    <h1>DAO Proposal Reviewer</h1>
+    <p class="sub">AI validators read every governance proposal against your DAO's rules and reach consensus on a verdict, before a single vote is cast.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b data-count id="sTotal">0</b><span>Proposals</span></div>
+    <div class="stat pass"><b data-count id="sPass">0</b><span>Pass</span></div>
+    <div class="stat revise"><b data-count id="sRevise">0</b><span>Revise</span></div>
+    <div class="stat reject"><b data-count id="sReject">0</b><span>Reject</span></div>
+  </div>
+
+  <div class="card" style="animation-delay:.2s">
+    <div class="row">
+      <h2><span class="ic">⚖</span><span id="daoName">GenBuilders DAO</span></h2>
+      <span class="meta">Contract <a id="contractLink" class="mono" target="_blank" rel="noopener"></a></span>
+    </div>
+    <div id="rules" class="rules">Loading rules…</div>
+  </div>
+
+  <div class="card" style="animation-delay:.28s">
+    <h2><span class="ic">✎</span>Submit a proposal</h2>
     <label for="title">Title</label>
     <input id="title" maxlength="120" placeholder="Community Hackathon Q1">
     <label for="desc">Description</label>
     <textarea id="desc" placeholder="Purpose, budget in USD, timeline, responsible person, milestones…"></textarea>
     <label for="url">Reference URL (optional)</label>
     <input id="url" placeholder="https://…">
-    <div style="margin-top:14px"><button id="submitBtn">Submit proposal</button></div>
-    <div id="status"></div>
+    <div style="margin-top:16px"><button id="submitBtn">Submit proposal</button></div>
   </div>
 
-  <div class="row" style="margin-bottom:10px">
-    <h2 style="margin:0">Proposals</h2>
-    <button class="ghost" id="refreshBtn">Refresh</button>
+  <div class="row" style="margin: 22px 0 12px">
+    <h2 style="margin:0"><span class="ic">☰</span>Proposals</h2>
+    <button class="ghost" id="refreshBtn">↻ Refresh</button>
   </div>
-  <div id="list"><div class="empty">Loading…</div></div>
+  <div id="list"><div class="skel"></div><div class="skel"></div></div>
 
-  <footer>GenLayer Studionet · reviews are decided by validator consensus and can take a minute.</footer>
+  <footer>Reviews are decided by validator consensus and can take up to a minute or two.</footer>
 </div>
 
 <script type="module">
@@ -89,55 +216,133 @@ import { studionet } from "https://esm.sh/genlayer-js/chains";
 
 const CONTRACT = "0x76BEA7a4a97B6933F58963F534e46b37e8e1192d";
 const EXPLORER = "https://explorer-studio.genlayer.com/address/" + CONTRACT;
-
-// Burner wallet kept in this browser only (Studionet is a testnet, no real funds).
-let pk = localStorage.getItem("dpr_pk");
-if (!pk) { pk = generatePrivateKey(); localStorage.setItem("dpr_pk", pk); }
-const account = createAccount(pk);
-const client = createClient({ chain: studionet, account });
+const COLORS = { PASS: "#34d399", REVISE: "#fbbf24", REJECT: "#fb7185" };
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
 const parse = (v) => (typeof v === "string" ? (v ? JSON.parse(v) : null) : v);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function setStatus(msg, isErr = false) {
-  const el = $("status");
-  el.textContent = msg;
-  el.className = isErr ? "err" : "";
+/* ---------- toast ---------- */
+function toast(msg, type = "") {
+  const t = document.createElement("div");
+  t.className = "toast " + type; t.textContent = msg;
+  $("toasts").appendChild(t);
+  setTimeout(() => { t.style.transition = "opacity .4s"; t.style.opacity = 0; setTimeout(() => t.remove(), 400); }, 3800);
 }
 
-const read = (fn, args = []) => client.readContract({ address: CONTRACT, functionName: fn, args });
+/* ---------- wallet ---------- */
+// Burner wallet = default (kept in this browser only; Studionet is a testnet).
+let pk = localStorage.getItem("dpr_pk");
+if (!pk) { pk = generatePrivateKey(); localStorage.setItem("dpr_pk", pk); }
+const burner = createAccount(pk);
+const readClient = createClient({ chain: studionet, account: burner });
+let client = readClient;
+let account = burner.address;
+let mode = "burner";
 
+function renderWallet() {
+  $("walletAddr").textContent = short(account) + (mode === "burner" ? " · burner" : "");
+  $("walletPill").classList.toggle("live", mode === "wallet");
+  $("walletBtn").textContent = mode === "wallet" ? "Disconnect" : "Connect wallet";
+}
+
+async function connectWallet() {
+  if (mode === "wallet") { client = readClient; account = burner.address; mode = "burner"; renderWallet(); toast("Back to burner wallet"); return; }
+  if (!window.ethereum) {
+    if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      toast("Opening in MetaMask app…");
+      location.href = "https://metamask.app.link/dapp/" + location.host + location.pathname;
+    } else toast("No wallet found. Install MetaMask or keep using the burner wallet.", "err");
+    return;
+  }
+  try {
+    const [addr] = await window.ethereum.request({ method: "eth_requestAccounts" });
+    const c = createClient({ chain: studionet, account: addr });
+    try { await c.connect("studionet"); } catch (e) { console.warn("network switch", e); }
+    client = c; account = addr; mode = "wallet";
+    renderWallet(); toast("Wallet connected", "ok");
+  } catch (e) { toast("Connection rejected", "err"); }
+}
+if (window.ethereum?.on) window.ethereum.on("accountsChanged", () => { if (mode === "wallet") location.reload(); });
+
+const read = (fn, args = []) => readClient.readContract({ address: CONTRACT, functionName: fn, args });
 async function write(fn, args) {
   const hash = await client.writeContract({ address: CONTRACT, functionName: fn, args, value: 0n });
   await client.waitForTransactionReceipt({ hash, status: "ACCEPTED", retries: 120, interval: 5000 });
   return hash;
 }
 
-async function loadHeader() {
-  $("wallet").textContent = short(account.address);
-  $("contractLink").textContent = short(CONTRACT);
-  $("contractLink").href = EXPLORER;
-  try { $("rules").textContent = await read("get_rules"); } catch { $("rules").textContent = "Could not load rules."; }
+/* ---------- ui helpers ---------- */
+function countUp(el, to) {
+  const from = Number(el.textContent) || 0, t0 = performance.now();
+  const step = (t) => { const p = Math.min(1, (t - t0) / 700); el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
 }
 
+document.addEventListener("pointermove", (e) => {
+  const card = e.target.closest?.(".card");
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  card.style.setProperty("--mx", e.clientX - r.left + "px");
+  card.style.setProperty("--my", e.clientY - r.top + "px");
+});
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const r = b.getBoundingClientRect(), s = Math.max(r.width, r.height);
+  const d = document.createElement("span");
+  d.className = "ripple"; d.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
+  b.appendChild(d); setTimeout(() => d.remove(), 600);
+});
+
+function confetti() {
+  const cv = $("confetti"), ctx = cv.getContext("2d");
+  cv.width = innerWidth; cv.height = innerHeight;
+  const cols = ["#8b5cff", "#22d3ee", "#ff5cb8", "#34d399", "#fbbf24"];
+  const ps = Array.from({ length: 140 }, () => ({
+    x: cv.width / 2, y: cv.height * 0.45, vx: (Math.random() - 0.5) * 16, vy: -Math.random() * 14 - 4,
+    s: Math.random() * 7 + 4, c: cols[(Math.random() * cols.length) | 0], r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, life: 0 }));
+  (function frame() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ps.forEach((p) => { p.vy += 0.38; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life++;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.globalAlpha = Math.max(0, 1 - p.life / 110);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); });
+    if (ps[0].life < 110) requestAnimationFrame(frame); else ctx.clearRect(0, 0, cv.width, cv.height);
+  })();
+}
+
+/* ---------- render ---------- */
 function reviewHtml(r) {
   if (!r) return "";
-  const issues = (r.issues || []).map((i) => `<li>${esc(i)}</li>`).join("");
+  const col = COLORS[r.verdict] || "#94a3b8";
+  const issues = (r.issues || []).map((i, n) => `<li style="animation-delay:${0.5 + n * 0.12}s">${esc(i)}</li>`).join("");
   return `<div class="review">
-    <span class="badge ${esc(r.verdict)}">${esc(r.verdict)}</span>
-    <span class="score">&nbsp;Score ${esc(r.score)}/100</span>
-    <div style="margin-top:6px">${esc(r.summary)}</div>
-    ${issues ? `<ul>${issues}</ul>` : ""}
+    <div class="ring">
+      <svg width="74" height="74" viewBox="0 0 74 74"><circle class="bgc" cx="37" cy="37" r="30"/>
+        <circle class="fg" cx="37" cy="37" r="30" stroke="${col}" data-score="${Number(r.score) || 0}"/></svg>
+      <b data-score-text="${Number(r.score) || 0}">0</b>
+    </div>
+    <div><span class="badge ${esc(r.verdict)}">${esc(r.verdict)}</span>
+      <div class="sum" style="margin-top:8px">${esc(r.summary)}</div>${issues ? `<ul>${issues}</ul>` : ""}</div>
   </div>`;
+}
+
+function animateRings(root) {
+  root.querySelectorAll(".ring .fg").forEach((c) => {
+    const s = Number(c.dataset.score);
+    requestAnimationFrame(() => requestAnimationFrame(() => { c.style.strokeDashoffset = 188.5 * (1 - s / 100); }));
+  });
+  root.querySelectorAll("[data-score-text]").forEach((b) => countUp(b, Number(b.dataset.scoreText)));
 }
 
 async function loadProposals() {
   const list = $("list");
   try {
     const count = Number(await read("get_proposal_count"));
-    if (!count) { list.innerHTML = '<div class="empty">No proposals yet.</div>'; return; }
+    if (!count) { list.innerHTML = '<div class="empty">No proposals yet. Be the first to submit one ✨</div>'; setStats([]); return; }
 
     const items = [];
     for (let i = count - 1; i >= 0; i--) {
@@ -145,59 +350,71 @@ async function loadProposals() {
       const r = p.status === "PENDING" ? null : parse(await read("get_review", [i]));
       items.push({ p, r });
     }
-    list.innerHTML = items.map(({ p, r }) => `
-      <div class="card prop">
+    setStats(items.map((x) => x.p.status));
+
+    list.innerHTML = items.map(({ p, r }, n) => `
+      <div class="card prop" style="animation-delay:${n * 0.08}s" id="prop-${p.id}">
         <div class="row">
-          <h3>#${p.id} · ${esc(p.title)}</h3>
+          <h3><span class="num">#${p.id}</span>${esc(p.title)}</h3>
           <span class="badge ${esc(p.status)}">${esc(p.status)}</span>
         </div>
         <div class="desc">${esc(p.description)}</div>
-        ${p.reference_url ? `<div class="meta"><a href="${esc(p.reference_url)}" target="_blank" rel="noopener">Reference</a></div>` : ""}
-        <div class="meta">by <span class="mono">${esc(short(p.proposer))}</span></div>
-        ${p.status === "PENDING" ? `<div style="margin-top:10px"><button data-review="${p.id}">Review with AI</button></div>` : reviewHtml(r)}
+        <div class="meta">${p.reference_url ? `<a href="${esc(p.reference_url)}" target="_blank" rel="noopener">Reference ↗</a> · ` : ""}by <span class="mono">${esc(short(p.proposer))}</span></div>
+        <div class="action">${p.status === "PENDING" ? `<button data-review="${p.id}" style="margin-top:14px">⚡ Review with AI</button>` : reviewHtml(r)}</div>
       </div>`).join("");
 
-    list.querySelectorAll("[data-review]").forEach((btn) =>
-      btn.addEventListener("click", () => reviewProposal(Number(btn.dataset.review), btn)));
+    list.querySelectorAll("[data-review]").forEach((btn) => btn.addEventListener("click", () => reviewProposal(Number(btn.dataset.review), btn)));
+    animateRings(list);
   } catch (e) {
     list.innerHTML = `<div class="empty">Could not load proposals: ${esc(e.message || e)}</div>`;
   }
 }
 
+function setStats(statuses) {
+  countUp($("sTotal"), statuses.length);
+  countUp($("sPass"), statuses.filter((s) => s === "PASS").length);
+  countUp($("sRevise"), statuses.filter((s) => s === "REVISE").length);
+  countUp($("sReject"), statuses.filter((s) => s === "REJECT").length);
+}
+
 async function reviewProposal(id, btn) {
-  btn.disabled = true;
-  btn.textContent = "Validators reviewing…";
+  const box = btn.closest(".action");
+  box.innerHTML = `<div class="consensus"><div class="nodes"><div class="node"></div><div class="node"></div><div class="node"></div><div class="node"></div><div class="node"></div></div>
+    <div class="meta">Validators are reviewing and reaching consensus…</div></div>`;
   try {
     await write("review_proposal", [id]);
+    const r = parse(await read("get_review", [id]));
+    await loadProposals();
+    if (r?.verdict === "PASS") { confetti(); toast("Proposal passed 🎉", "ok"); }
+    else toast("Review finished: " + (r?.verdict || "done"), r?.verdict === "REJECT" ? "err" : "ok");
   } catch (e) {
-    alert("Review failed: " + (e.message || e));
+    toast("Review failed: " + (e.message || e), "err");
+    await loadProposals();
   }
-  await loadProposals();
 }
 
 $("submitBtn").addEventListener("click", async () => {
-  const title = $("title").value.trim();
-  const description = $("desc").value.trim();
-  const url = $("url").value.trim();
-  if (!title || !description) { setStatus("Title and description are required.", true); return; }
-
-  $("submitBtn").disabled = true;
-  setStatus("Submitting… waiting for the transaction to be accepted.");
+  const title = $("title").value.trim(), description = $("desc").value.trim(), url = $("url").value.trim();
+  if (!title || !description) { toast("Title and description are required", "err"); return; }
+  const b = $("submitBtn"); b.disabled = true; b.textContent = "Submitting…";
   try {
     await write("submit_proposal", [title, description, url]);
     $("title").value = ""; $("desc").value = ""; $("url").value = "";
-    setStatus("Proposal submitted. Click “Review with AI” on it below.");
+    toast("Proposal submitted. Hit “Review with AI” below.", "ok");
     await loadProposals();
-  } catch (e) {
-    setStatus("Submit failed: " + (e.message || e), true);
-  } finally {
-    $("submitBtn").disabled = false;
-  }
+    $("list").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) { toast("Submit failed: " + (e.message || e), "err"); }
+  finally { b.disabled = false; b.textContent = "Submit proposal"; }
 });
 
 $("refreshBtn").addEventListener("click", loadProposals);
+$("walletBtn").addEventListener("click", connectWallet);
 
-loadHeader();
+/* ---------- init ---------- */
+$("contractLink").textContent = short(CONTRACT);
+$("contractLink").href = EXPLORER;
+renderWallet();
+read("get_rules").then((r) => { $("rules").textContent = r; }).catch(() => { $("rules").textContent = "Could not load rules."; });
 loadProposals();
 </script>
 </body>
