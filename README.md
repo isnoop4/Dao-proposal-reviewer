@@ -100,6 +100,6 @@ ES modules need a server, so don't open the file directly:
 
 ## Files
 
-    dao_proposal_reviewer.py   Intelligent Contract
+    contracts/dao_proposal_reviewer.py   Intelligent Contract
     docs/index.html            Static frontend
     README.md                  This file
