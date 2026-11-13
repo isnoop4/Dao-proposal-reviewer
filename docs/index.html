@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAO Proposal Reviewer · GenLayer</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #2a313c; --text: #e6edf3; --muted: #8b949e;
+    --accent: #7c5cff; --pass: #2ea043; --revise: #d29922; --reject: #f85149; --pending: #6e7681;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f6f8fa; --card: #ffffff; --border: #d0d7de; --text: #1f2328; --muted: #656d76; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 110px; resize: vertical; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px;
+    font: inherit; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: wait; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 7px 12px; }
+  .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .rules { white-space: pre-wrap; color: var(--muted); font-size: 14px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; }
+  .PENDING { background: var(--pending); } .PASS { background: var(--pass); }
+  .REVISE { background: var(--revise); } .REJECT { background: var(--reject); }
+  .prop h3 { margin: 0; font-size: 16px; }
+  .prop .desc { margin: 8px 0; white-space: pre-wrap; }
+  .meta { color: var(--muted); font-size: 12px; }
+  .review { margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); }
+  .review ul { margin: 6px 0 0 18px; padding: 0; }
+  .score { font-weight: 700; }
+  #status { font-size: 13px; color: var(--muted); min-height: 20px; margin: 8px 0 0; }
+  #status.err { color: var(--reject); }
+  .empty { color: var(--muted); text-align: center; padding: 20px 0; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>DAO Proposal Reviewer</h1>
+  <p class="sub">An Intelligent Contract on GenLayer where AI validators check governance proposals against DAO rules before voting.</p>
+
+  <div class="card">
+    <div class="row">
+      <div><strong id="daoName">…</strong><div class="meta">Contract <a id="contractLink" class="mono" target="_blank" rel="noopener"></a></div></div>
+      <div class="meta">Wallet <span id="wallet" class="mono">…</span></div>
+    </div>
+    <h2 style="margin-top:14px">DAO rules</h2>
+    <div id="rules" class="rules">Loading…</div>
+  </div>
+
+  <div class="card">
+    <h2>Submit a proposal</h2>
+    <label for="title">Title</label>
+    <input id="title" maxlength="120" placeholder="Community Hackathon Q1">
+    <label for="desc">Description</label>
+    <textarea id="desc" placeholder="Purpose, budget in USD, timeline, responsible person, milestones…"></textarea>
+    <label for="url">Reference URL (optional)</label>
+    <input id="url" placeholder="https://…">
+    <div style="margin-top:14px"><button id="submitBtn">Submit proposal</button></div>
+    <div id="status"></div>
+  </div>
+
+  <div class="row" style="margin-bottom:10px">
+    <h2 style="margin:0">Proposals</h2>
+    <button class="ghost" id="refreshBtn">Refresh</button>
+  </div>
+  <div id="list"><div class="empty">Loading…</div></div>
+
+  <footer>GenLayer Studionet · reviews are decided by validator consensus and can take a minute.</footer>
+</div>
+
+<script type="module">
+import { createClient, createAccount, generatePrivateKey } from "https://esm.sh/genlayer-js";
+import { studionet } from "https://esm.sh/genlayer-js/chains";
+
+const CONTRACT = "0x76BEA7a4a97B6933F58963F534e46b37e8e1192d";
+const EXPLORER = "https://explorer-studio.genlayer.com/address/" + CONTRACT;
+
+// Burner wallet kept in this browser only (Studionet is a testnet, no real funds).
+let pk = localStorage.getItem("dpr_pk");
+if (!pk) { pk = generatePrivateKey(); localStorage.setItem("dpr_pk", pk); }
+const account = createAccount(pk);
+const client = createClient({ chain: studionet, account });
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
+const parse = (v) => (typeof v === "string" ? (v ? JSON.parse(v) : null) : v);
+
+function setStatus(msg, isErr = false) {
+  const el = $("status");
+  el.textContent = msg;
+  el.className = isErr ? "err" : "";
+}
+
+const read = (fn, args = []) => client.readContract({ address: CONTRACT, functionName: fn, args });
+
+async function write(fn, args) {
+  const hash = await client.writeContract({ address: CONTRACT, functionName: fn, args, value: 0n });
+  await client.waitForTransactionReceipt({ hash, status: "ACCEPTED", retries: 120, interval: 5000 });
+  return hash;
+}
+
+async function loadHeader() {
+  $("wallet").textContent = short(account.address);
+  $("contractLink").textContent = short(CONTRACT);
+  $("contractLink").href = EXPLORER;
+  try { $("rules").textContent = await read("get_rules"); } catch { $("rules").textContent = "Could not load rules."; }
+}
+
+function reviewHtml(r) {
+  if (!r) return "";
+  const issues = (r.issues || []).map((i) => `<li>${esc(i)}</li>`).join("");
+  return `<div class="review">
+    <span class="badge ${esc(r.verdict)}">${esc(r.verdict)}</span>
+    <span class="score">&nbsp;Score ${esc(r.score)}/100</span>
+    <div style="margin-top:6px">${esc(r.summary)}</div>
+    ${issues ? `<ul>${issues}</ul>` : ""}
+  </div>`;
+}
+
+async function loadProposals() {
+  const list = $("list");
+  try {
+    const count = Number(await read("get_proposal_count"));
+    if (!count) { list.innerHTML = '<div class="empty">No proposals yet.</div>'; return; }
+
+    const items = [];
+    for (let i = count - 1; i >= 0; i--) {
+      const p = parse(await read("get_proposal", [i]));
+      const r = p.status === "PENDING" ? null : parse(await read("get_review", [i]));
+      items.push({ p, r });
+    }
+    list.innerHTML = items.map(({ p, r }) => `
+      <div class="card prop">
+        <div class="row">
+          <h3>#${p.id} · ${esc(p.title)}</h3>
+          <span class="badge ${esc(p.status)}">${esc(p.status)}</span>
+        </div>
+        <div class="desc">${esc(p.description)}</div>
+        ${p.reference_url ? `<div class="meta"><a href="${esc(p.reference_url)}" target="_blank" rel="noopener">Reference</a></div>` : ""}
+        <div class="meta">by <span class="mono">${esc(short(p.proposer))}</span></div>
+        ${p.status === "PENDING" ? `<div style="margin-top:10px"><button data-review="${p.id}">Review with AI</button></div>` : reviewHtml(r)}
+      </div>`).join("");
+
+    list.querySelectorAll("[data-review]").forEach((btn) =>
+      btn.addEventListener("click", () => reviewProposal(Number(btn.dataset.review), btn)));
+  } catch (e) {
+    list.innerHTML = `<div class="empty">Could not load proposals: ${esc(e.message || e)}</div>`;
+  }
+}
+
+async function reviewProposal(id, btn) {
+  btn.disabled = true;
+  btn.textContent = "Validators reviewing…";
+  try {
+    await write("review_proposal", [id]);
+  } catch (e) {
+    alert("Review failed: " + (e.message || e));
+  }
+  await loadProposals();
+}
+
+$("submitBtn").addEventListener("click", async () => {
+  const title = $("title").value.trim();
+  const description = $("desc").value.trim();
+  const url = $("url").value.trim();
+  if (!title || !description) { setStatus("Title and description are required.", true); return; }
+
+  $("submitBtn").disabled = true;
+  setStatus("Submitting… waiting for the transaction to be accepted.");
+  try {
+    await write("submit_proposal", [title, description, url]);
+    $("title").value = ""; $("desc").value = ""; $("url").value = "";
+    setStatus("Proposal submitted. Click “Review with AI” on it below.");
+    await loadProposals();
+  } catch (e) {
+    setStatus("Submit failed: " + (e.message || e), true);
+  } finally {
+    $("submitBtn").disabled = false;
+  }
+});
+
+$("refreshBtn").addEventListener("click", loadProposals);
+
+loadHeader();
+loadProposals();
+</script>
+</body>
+</html>
