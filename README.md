@@ -41,43 +41,56 @@ Constructor: `DAOProposalReviewer(dao_name: str, rules: str)`
 1. Open [GenLayer Studio](https://studio.genlayer.com) and paste `dao_proposal_reviewer.py`.
 2. Deploy with these constructor arguments:
 
-   **dao_name**
-   ```
-   GenBuilders DAO
-   ```
+    **dao_name**
 
-   **rules**
-   ```
-   Every proposal must state a clear purpose, a budget in USD, a timeline, and a named person responsible. Budgets above 50,000 USD require approval from two independent auditors. A proposer may not be a fund recipient without declaring a conflict of interest. Proposals must not promise fixed returns or make unverifiable claims. Deliverables must be measurable, with clear milestones.
-   ```
+        GenBuilders DAO
+
+    **rules**
+
+        Every proposal must state a clear purpose, a budget in USD, a timeline, and a named person responsible. Budgets above 50,000 USD require approval from two independent auditors. A proposer may not be a fund recipient without declaring a conflict of interest. Proposals must not promise fixed returns or make unverifiable claims. Deliverables must be measurable, with clear milestones.
 
 ## Try it
 
 - **Should `PASS`:** "Community Hackathon Q1", 8,000 USD budget, 3-month timeline, a named lead, 3 milestones.
 - **Should `REJECT`:** "Investment Fund", 200,000 USD, no timeline, promises 30% profit per month.
 
+## Live Test Results (Studionet)
+
+Tested end-to-end on the deployed contract. The contract correctly distinguishes good, fixable, and scam proposals, and correctly re-scores a proposal after revision.
+
+| ID | Proposal | Verdict | Score | What happened |
+|----|----------|---------|-------|---------------|
+| #0 | Community Hackathon Q1 | PASS | 95 | Complete, compliant, measurable deliverables |
+| #1 | Investment Fund | REJECT | 0 | 200,000 USD, promises 30% profit/month, no timeline, scam indicators |
+| #2 | Developer Documentation Translation | PASS | 95 | Itemized 3,500 USD budget, timeline, named lead, measurable milestones |
+| #3 | Community Meetup Jakarta (v1) | REVISE | 65 | "Deliverables are not measurable, Lack of clear milestones, Purpose too vague" |
+| #4 | Community Meetup Jakarta (v2 - revised) | PASS | 96 | Same idea, fixed: itemized 5,000 USD budget, Jan-Mar 2027 timeline, 40 attendees / meetup, recordings + report |
+
+**Key result:** `#3 -> #4` proves the full loop works:
+`Submit -> Review (REVISE) -> Revise -> Review again (PASS)`
+
+Revisions create a new proposal version, so the original remains on-chain as an audit trail.
+
 ## Frontend
 
-`index.html` is a single static file with no build step. It uses [`genlayer-js`](https://github.com/genlayerlabs/genlayer-js) from a CDN to talk to the contract on Studionet.
+`docs/index.html` is a single static file with no build step. It uses [`genlayer-js`](https://github.com/genlayerlabs/genlayer-js) from a CDN to talk to the contract on Studionet.
 
 - On first visit it generates a **burner wallet** stored in the browser's `localStorage` (Studionet is a testnet, no real funds). Clearing site data creates a new wallet.
-- It shows the DAO rules, lets you submit proposals, trigger AI reviews, and see verdicts, scores, and issues.
+- It shows the DAO rules, lets you submit proposals, trigger AI reviews, revise proposals, and see verdicts, scores, and issues.
 - The contract address is set by the `CONTRACT` constant near the top of the script. Change it if you redeploy.
 
 ### Run locally
 
 ES modules need a server, so don't open the file directly:
 
-```bash
-python3 -m http.server 8000
-# open http://localhost:8000
-```
+    python3 -m http.server 8000
+    # open http://localhost:8000/docs/
 
 ### Publish on GitHub Pages
 
-1. Push `index.html` and `README.md` to a GitHub repository.
-2. Go to **Settings → Pages**.
-3. Under **Build and deployment**, choose **Deploy from a branch**, select `main` and `/ (root)`, then save.
+1. Push `docs/index.html` and `README.md` to a GitHub repository.
+2. Go to **Settings -> Pages**.
+3. Under **Build and deployment**, choose **Deploy from a branch**, select `main` and `/docs`, then save.
 4. After a minute the site is live at `https://<your-username>.github.io/<repo-name>/`.
 
 ## Notes
@@ -87,8 +100,6 @@ python3 -m http.server 8000
 
 ## Files
 
-```
-dao_proposal_reviewer.py   Intelligent Contract
-index.html                 Static frontend
-README.md                  This file
-```
+    dao_proposal_reviewer.py   Intelligent Contract
+    docs/index.html            Static frontend
+    README.md                  This file
