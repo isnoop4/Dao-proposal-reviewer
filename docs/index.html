@@ -105,6 +105,7 @@
   /* ---------- proposals ---------- */
   .prop h3 { margin: 0; font-size: 16.5px; }
   .prop .num { color: var(--muted); font-weight: 500; margin-right: 4px; }
+  .prop .rev { color: var(--muted); font-weight: 500; font-size: 12px; margin-left: 6px; }
   .prop .desc { margin: 10px 0; white-space: pre-wrap; color: #d6d9f5; font-size: 14.5px; }
   .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .6px; color: #07060f; }
   .badge.PENDING { background: var(--pending); } .badge.PASS { background: var(--pass); }
@@ -125,6 +126,14 @@
   .review ul { margin: 8px 0 0; padding: 0; list-style: none; }
   .review li { position: relative; padding-left: 18px; margin: 4px 0; font-size: 13.5px; color: var(--muted); opacity: 0; animation: rise .5s forwards; }
   .review li::before { content: "›"; position: absolute; left: 4px; color: var(--cyan); font-weight: 800; }
+
+  /* revise box + history */
+  .revbox { margin-top: 14px; padding: 14px; border-radius: 14px; border: 1px dashed rgba(251,191,36,.55); background: rgba(251,191,36,.06); }
+  .revbox textarea { min-height: 110px; }
+  .hist { margin-top: 12px; }
+  .ver { margin-top: 10px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: rgba(0,0,0,.2); }
+  .ver .vh { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+  .ver .vd { margin-top: 6px; white-space: pre-wrap; color: #d6d9f5; font-size: 13.5px; }
 
   /* validator consensus animation */
   .consensus { margin-top: 12px; padding: 14px; border-radius: 14px; border: 1px dashed rgba(139,92,255,.5); background: rgba(139,92,255,.07); text-align: center; }
@@ -207,14 +216,14 @@
   </div>
   <div id="list"><div class="skel"></div><div class="skel"></div></div>
 
-  <footer>Reviews are decided by validator consensus and can take up to a minute or two.</footer>
+  <footer>Reviews are decided by validator consensus and can take up to a minute or two. Revisions are versioned: earlier versions and their reviews are kept.</footer>
 </div>
 
 <script type="module">
 import { createClient, createAccount, generatePrivateKey } from "https://esm.sh/genlayer-js";
 import { studionet } from "https://esm.sh/genlayer-js/chains";
 
-const CONTRACT = "0x76BEA7a4a97B6933F58963F534e46b37e8e1192d";
+const CONTRACT = "0xA01EDAE3935B5d1d857A57de18C5260a92303D26";
 const EXPLORER = "https://explorer-studio.genlayer.com/address/" + CONTRACT;
 const COLORS = { PASS: "#34d399", REVISE: "#fbbf24", REJECT: "#fb7185" };
 
@@ -249,7 +258,7 @@ function renderWallet() {
 }
 
 async function connectWallet() {
-  if (mode === "wallet") { client = readClient; account = burner.address; mode = "burner"; renderWallet(); toast("Back to burner wallet"); return; }
+  if (mode === "wallet") { client = readClient; account = burner.address; mode = "burner"; renderWallet(); toast("Back to burner wallet"); loadProposals(); return; }
   if (!window.ethereum) {
     if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
       toast("Opening in MetaMask app…");
@@ -263,6 +272,7 @@ async function connectWallet() {
     try { await c.connect("studionet"); } catch (e) { console.warn("network switch", e); }
     client = c; account = addr; mode = "wallet";
     renderWallet(); toast("Wallet connected", "ok");
+    loadProposals();
   } catch (e) { toast("Connection rejected", "err"); }
 }
 if (window.ethereum?.on) window.ethereum.on("accountsChanged", () => { if (mode === "wallet") location.reload(); });
@@ -338,6 +348,24 @@ function animateRings(root) {
   root.querySelectorAll("[data-score-text]").forEach((b) => countUp(b, Number(b.dataset.scoreText)));
 }
 
+function actionHtml(p, r) {
+  const mine = String(p.proposer).toLowerCase() === String(account).toLowerCase();
+  if (p.status === "PENDING") {
+    return `<button data-review="${p.id}" style="margin-top:14px">⚡ Review with AI</button>`;
+  }
+  let html = reviewHtml(r);
+  if (p.status === "REVISE") {
+    html += mine
+      ? `<div class="revbox">
+           <div class="meta" style="margin-bottom:6px">Revise this proposal. This creates revision ${Number(p.revision) + 1}; the earlier version and its review are kept.</div>
+           <textarea id="rev-text-${p.id}" placeholder="Improved description: purpose, budget, timeline, responsible person, milestones, measurable deliverables…"></textarea>
+           <div style="margin-top:12px"><button data-revise="${p.id}">Submit revision</button></div>
+         </div>`
+      : `<div class="meta" style="margin-top:12px">Only the proposer can submit a revision.</div>`;
+  }
+  return html;
+}
+
 async function loadProposals() {
   const list = $("list");
   try {
@@ -355,15 +383,18 @@ async function loadProposals() {
     list.innerHTML = items.map(({ p, r }, n) => `
       <div class="card prop" style="animation-delay:${n * 0.08}s" id="prop-${p.id}">
         <div class="row">
-          <h3><span class="num">#${p.id}</span>${esc(p.title)}</h3>
+          <h3><span class="num">#${p.id}</span>${esc(p.title)}${Number(p.revision) > 0 ? `<span class="rev">rev ${Number(p.revision)}</span>` : ""}</h3>
           <span class="badge ${esc(p.status)}">${esc(p.status)}</span>
         </div>
         <div class="desc">${esc(p.description)}</div>
         <div class="meta">${p.reference_url ? `<a href="${esc(p.reference_url)}" target="_blank" rel="noopener">Reference ↗</a> · ` : ""}by <span class="mono">${esc(short(p.proposer))}</span></div>
-        <div class="action">${p.status === "PENDING" ? `<button data-review="${p.id}" style="margin-top:14px">⚡ Review with AI</button>` : reviewHtml(r)}</div>
+        <div class="action">${actionHtml(p, r)}</div>
+        ${Number(p.revision) > 0 ? `<div style="margin-top:12px"><button class="ghost" data-history="${p.id}">Version history (${Number(p.revision) + 1})</button></div><div class="hist" id="hist-${p.id}"></div>` : ""}
       </div>`).join("");
 
     list.querySelectorAll("[data-review]").forEach((btn) => btn.addEventListener("click", () => reviewProposal(Number(btn.dataset.review), btn)));
+    list.querySelectorAll("[data-revise]").forEach((btn) => btn.addEventListener("click", () => reviseProposal(Number(btn.dataset.revise), btn)));
+    list.querySelectorAll("[data-history]").forEach((btn) => btn.addEventListener("click", () => toggleHistory(Number(btn.dataset.history), btn)));
     animateRings(list);
   } catch (e) {
     list.innerHTML = `<div class="empty">Could not load proposals: ${esc(e.message || e)}</div>`;
@@ -375,6 +406,24 @@ function setStats(statuses) {
   countUp($("sPass"), statuses.filter((s) => s === "PASS").length);
   countUp($("sRevise"), statuses.filter((s) => s === "REVISE").length);
   countUp($("sReject"), statuses.filter((s) => s === "REJECT").length);
+}
+
+async function toggleHistory(id, btn) {
+  const box = $("hist-" + id);
+  if (box.innerHTML) { box.innerHTML = ""; return; }
+  box.innerHTML = '<div class="meta" style="margin-top:10px">Loading history…</div>';
+  try {
+    const h = parse(await read("get_history", [id]));
+    box.innerHTML = h.history.map((v) => `
+      <div class="ver">
+        <div class="vh">Revision ${Number(v.revision)} <span class="badge ${esc(v.status)}">${esc(v.status)}</span></div>
+        <div class="vd">${esc(v.description)}</div>
+        ${v.review ? reviewHtml(v.review) : '<div class="meta" style="margin-top:8px">Not reviewed yet.</div>'}
+      </div>`).join("");
+    animateRings(box);
+  } catch (e) {
+    box.innerHTML = `<div class="meta" style="margin-top:10px">Could not load history: ${esc(e.message || e)}</div>`;
+  }
 }
 
 async function reviewProposal(id, btn) {
@@ -390,6 +439,21 @@ async function reviewProposal(id, btn) {
   } catch (e) {
     toast("Review failed: " + (e.message || e), "err");
     await loadProposals();
+  }
+}
+
+async function reviseProposal(id, btn) {
+  const ta = $("rev-text-" + id);
+  const text = (ta?.value || "").trim();
+  if (!text) { toast("Write the revised description first", "err"); return; }
+  btn.disabled = true; btn.textContent = "Submitting revision…";
+  try {
+    await write("revise_proposal", [id, text]);
+    toast("Revision submitted. Hit “Review with AI” to re-review.", "ok");
+    await loadProposals();
+  } catch (e) {
+    toast("Revision failed: " + (e.message || e), "err");
+    btn.disabled = false; btn.textContent = "Submit revision";
   }
 }
 
