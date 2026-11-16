@@ -70,16 +70,17 @@ Constructor: `DAOProposalReviewer(dao_name: str, rules: str)`
 
         Every proposal must state a clear purpose, a budget in USD, a timeline, and a named person responsible. Budgets above 50,000 USD require approval from two independent auditors. A proposer may not be a fund recipient without declaring a conflict of interest. Proposals must not promise fixed returns or make unverifiable claims. Deliverables must be measurable, with clear milestones.
 
-## Client script (submit, review, revise, re-review)
+## Revision flow in GenLayer Studio
 
-`client_revise_flow.py` runs the full loop against the deployed contract on Studionet using `genlayer-py`:
+The full loop can be run from the Studio UI on the deployed contract:
 
-    pip install genlayer-py
-    export PRIVATE_KEY=0x...
-    export CONTRACT=0xA01EDAE3935B5d1d857A57de18C5260a92303D26
-    python client_revise_flow.py
+1. `submit_proposal(title, description, reference_url)`
+2. `review_proposal(id)`
+3. If the verdict is `REVISE`: `revise_proposal(id, new_description)` (same id, new revision)
+4. `review_proposal(id)` again
+5. `get_history(id)` shows every revision with its review
 
-It submits a proposal, reviews it, and if the verdict is `REVISE` it calls `revise_proposal` on the **same proposal id**, re-reviews, then prints `get_history`.
+The frontend (`docs/index.html`) exposes the same revise and re-review actions.
 
 ## Try it
 
@@ -130,6 +131,5 @@ ES modules need a server, so don't open the file directly:
 ## Files
 
     contracts/dao_proposal_reviewer.py   Intelligent Contract (versioned revisions)
-    client_revise_flow.py                Client: submit, review, revise, re-review, history
     docs/index.html                      Static frontend
     README.md                            This file
